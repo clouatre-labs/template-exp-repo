@@ -56,7 +56,9 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
       - name: Validate experiment schemas
-        run: uv run python validate_schema.py --self-test
+        run: |
+          uv run python validate_schema.py --self-test
+          uv run python validate_schema.py
 
   # Aggregate status check: add language-specific jobs (lint, test, build)
   # to the needs array as the repo grows; the ruleset keeps requiring only

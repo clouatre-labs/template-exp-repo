@@ -6,7 +6,10 @@ top-level fields and run records with the expected structure. Certain
 fields are nullable (allowed to be null) while others must have values.
 
 Usage:
-    uv run python validate_schema.py [--self-test]
+    uv run python validate_schema.py [--self-test] [FILE ...]
+
+With no FILE arguments, discovers and validates all
+experiments/*/analysis.json files under the repository root.
 
 Exits with 0 if all files pass validation, 1 if any validation fails.
 """
@@ -83,6 +86,8 @@ def validate_runs(runs, required_run_fields):
 
 
 def validate_record(data):
+    if not isinstance(data, dict):
+        return [f"top-level JSON value is not an object: {type(data).__name__}"]
     errors = validate_top_level(data, REQUIRED_TOP_FIELDS)
     errors.extend(validate_runs(data.get("runs"), REQUIRED_RUN_FIELDS))
     return errors
@@ -149,13 +154,28 @@ def self_test():
     if "title" not in errors or "run control-1 has null total_tokens" not in errors:
         print(f"self-test FAILED: malformed record not caught: {errors}")
         return False
-    print("self-test passed: valid record accepted, malformed record rejected")
+    array_errors = validate_record([MINIMAL_VALID_RECORD])
+    if array_errors != ["top-level JSON value is not an object: list"]:
+        print(f"self-test FAILED: JSON array not rejected: {array_errors}")
+        return False
+    scalar_errors = validate_record("not-an-object")
+    if scalar_errors != ["top-level JSON value is not an object: str"]:
+        print(f"self-test FAILED: JSON scalar not rejected: {scalar_errors}")
+        return False
+    print(
+        "self-test passed: valid record accepted, malformed record rejected,"
+        " non-mapping values rejected"
+    )
     return True
 
 
 def main():
     if "--self-test" in sys.argv:
         sys.exit(0 if self_test() else 1)
+    file_args = [arg for arg in sys.argv[1:] if arg != "--self-test"]
+    if file_args:
+        all_ok = all(validate_path(pathlib.Path(arg)) for arg in file_args)
+        sys.exit(0 if all_ok else 1)
     base = pathlib.Path(".").resolve()
     paths = sorted((base / "experiments").glob("*/analysis.json"))
     if not paths:
