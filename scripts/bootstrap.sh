@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bootstrap.sh - Idempotent repo setup for repos created from clouatre-labs/template-repo.
+# bootstrap.sh - Idempotent repo setup for repos created from clouatre-labs/template-exp-repo.
 # Run from within the cloned repo: bash scripts/bootstrap.sh
 # Requires: gh CLI authenticated with repo write access.
 
