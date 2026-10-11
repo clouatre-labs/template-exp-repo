@@ -89,15 +89,23 @@ ALLOWED_GROUPS = {"control", "treatment"}
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
+TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}")
+
+
 def _is_int(value):
     return isinstance(value, int) and not isinstance(value, bool)
 
 
 def _parse_timestamp(value):
+    """Accept only full ISO 8601 timestamps with a UTC offset."""
+    if not TIMESTAMP_RE.match(value):
+        return False
     text = value[:-1] + "+00:00" if value.endswith("Z") else value
     try:
-        datetime.datetime.fromisoformat(text)
+        parsed = datetime.datetime.fromisoformat(text)
     except ValueError:
+        return False
+    if parsed.tzinfo is None or parsed.tzinfo.utcoffset(parsed) is None:
         return False
     return True
 
@@ -127,6 +135,9 @@ def validate_top_level(data):
                 datetime.date.fromisoformat(value)
             except ValueError:
                 errors.append(f"top-level field {field} is not a valid calendar date")
+    for field in ("issue", "orchestrator_session"):
+        if data.get(field) is not None and not isinstance(data[field], str):
+            errors.append(f"top-level field {field} is not a string or null")
     for field in TIMESTAMP_TOP_FIELDS:
         value = data.get(field)
         if isinstance(value, str) and not _parse_timestamp(value):
@@ -171,6 +182,11 @@ def validate_runs(runs):
             value = record.get(field)
             if field in record and value is not None and not isinstance(value, (int, float)):
                 errors.append(f"run {run_id} field {field} is not a number")
+        for field in ("session_id", "note"):
+            if field in record and record[field] is not None and not isinstance(record[field], str):
+                errors.append(f"run {run_id} field {field} is not a string or null")
+        if "bytes" in record and record["bytes"] is not None and not _is_int(record["bytes"]):
+            errors.append(f"run {run_id} field bytes is not an integer or null")
         if (
             _is_int(record.get("input_tokens"))
             and _is_int(record.get("output_tokens"))
@@ -357,9 +373,45 @@ def self_test():
         ),
         ([MINIMAL_VALID_RECORD], "not an object: list", "array top level"),
         ("not-an-object", "not an object: str", "scalar top level"),
+        (
+            _mutated(runs__control_1__session_id=42),
+            "session_id is not a string or null",
+            "non-string session_id",
+        ),
+        (
+            _mutated(runs__control_1__bytes="big"),
+            "bytes is not an integer or null",
+            "non-integer bytes",
+        ),
+        (
+            _mutated(runs__control_1__note=3.14),
+            "note is not a string or null",
+            "non-string note",
+        ),
+        (
+            _mutated(analyzed_at="2026-01-02T00:00:00"),
+            "not an ISO 8601 timestamp",
+            "naive timestamp without offset",
+        ),
+        (
+            _mutated(analyzed_at="2026-01-02"),
+            "not an ISO 8601 timestamp",
+            "date-only timestamp",
+        ),
     ]
     for record, substring, label in cases:
         if not _expect_errors(record, substring, label):
+            return False
+    accepted = [
+        (_mutated(issue=None), "null issue accepted"),
+        (_mutated(orchestrator_session=None), "null orchestrator_session accepted"),
+        (_mutated(runs__control_1__bytes=None), "null bytes accepted"),
+        (_mutated(runs__control_1__note=None), "null note accepted"),
+        (_mutated(analyzed_at="2026-01-02T00:00:00+00:00"), "offset timestamp accepted"),
+    ]
+    for record, label in accepted:
+        if validate_record(record):
+            print(f"self-test FAILED: {label}: {validate_record(record)}")
             return False
     slug_record = json.loads(json.dumps(MINIMAL_VALID_RECORD))
     slug_record["experiment"] = "exp-other"

@@ -27,11 +27,11 @@ Each experiment directory `experiments/<slug>/` contains:
 | `control_condition` | string | no | Description of the control condition |
 | `treatment_condition` | string | no | Description of the treatment condition |
 | `rubric_version` | string | no | Rubric identifier used for scoring |
-| `orchestrator_session` | object \| null | yes | Orchestrator session reference, if any |
+| `orchestrator_session` | string \| null | yes | Orchestrator session reference, if any |
 | `repo_head` | string | no | Repository commit at run time |
-| `experiment_start` | string | no | ISO 8601 timestamp of first run |
-| `experiment_end` | string | no | ISO 8601 timestamp of last run |
-| `analyzed_at` | string | no | ISO 8601 timestamp of analysis |
+| `experiment_start` | string | no | ISO 8601 timestamp with UTC offset of first run |
+| `experiment_end` | string | no | ISO 8601 timestamp with UTC offset of last run |
+| `analyzed_at` | string | no | ISO 8601 timestamp with UTC offset of analysis |
 | `runs` | object | no | Map of run ID to run record |
 | `scores` | object | no | Scoring summary keyed by run ID |
 | `statistical_test` | string | no | Pre-registered statistical test name |
