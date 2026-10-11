@@ -5,7 +5,20 @@
 
 <h1 align="center">{{REPO_NAME}}</h1>
 
-{{TITLE}}. TODO: one-paragraph description of what this repository studies and why.
+{{REPO_NAME}} is a template repository for pre-registered LLM experiments. Each experiment is committed before it runs: a protocol, runner prompt, and scorer prompt are fixed in git, results are collected as raw sessions, scoring is performed blind against a rubric, and the analyzed record validates against the schema in [DATA_DICTIONARY.md](DATA_DICTIONARY.md) in CI. This structure makes every reported number traceable to a pre-registered design and reproducible by anyone with repository access.
+
+## Lifecycle
+
+```mermaid
+graph TD
+    A[hypothesis] --> B[pre-register]
+    B --> C[run]
+    C --> D[score]
+    D --> E[analyze]
+    E --> F[paper]
+```
+
+The rendered diagram is optional; the Mermaid source above is the canonical artifact and is committed inline in this README.
 
 ## Experiment Index
 

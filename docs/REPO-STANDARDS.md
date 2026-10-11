@@ -19,6 +19,7 @@ The table below covers all committed configuration artifacts. Issue templates, P
 | `.github/workflows/markdown-lint.yml` | Lints all Markdown on pull requests targeting `main` with markdownlint-cli2; runs with narrowed `contents: read` permissions | repo |
 | `.github/workflows/security.yml` | Sequential trufflehog and zizmor steps in a single required `Security Result` job | repo |
 | `.github/workflows/scheduled-security-audit.yml` | Weekly scheduled zizmor security audit | repo |
+| `.github/labels.yml` | Conventional Commits vocabulary labels (feat, fix, docs, chore, refactor, test, ci, perf). Labels are not managed org-wide; after adopting the template, sync them with `gh label sync --file .github/labels.yml -R <owner>/<repo>` (see `scripts/bootstrap.sh`) | repo |
 | `.commitlintrc.yml` | Conventional Commits ruleset for commitlint | repo |
 | `.github/workflows/scorecard.yml` | Weekly OpenSSF Scorecard analysis; skipped on private repos (`visibility == 'public'` gate), publishes SARIF to code scanning on public ones | repo |
 | `.github/zizmor.yml` | zizmor suppression config for intentional patterns (e.g. `github.actor` gates); owned by security-reviewers via CODEOWNERS | repo |
