@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: template-repo
-Upstream-Contact: https://github.com/clouatre-labs/template-repo
-Source: https://github.com/clouatre-labs/template-repo
+Upstream-Name: template-exp-repo
+Upstream-Contact: https://github.com/clouatre-labs/template-exp-repo
+Source: https://github.com/clouatre-labs/template-exp-repo
 
 Files: *
 Copyright: 2026 clouatre-labs
