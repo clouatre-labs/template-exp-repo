@@ -22,6 +22,15 @@
 - name: test
   color: 5319e7
   description: Test-only change
+- name: testing
+  color: bfe5bf
+  description: Test suite, coverage, or testing infrastructure change
+- name: dependencies
+  color: 0366d6
+  description: Dependency update (Renovate or manual)
+- name: security
+  color: ee0701
+  description: Security hardening or vulnerability remediation
 - name: ci
   color: 1d76db
   description: CI/CD pipeline or workflow change

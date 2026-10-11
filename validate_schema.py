@@ -20,6 +20,7 @@ Standard library only; no third-party imports.
 
 import datetime
 import json
+import math
 import pathlib
 import re
 import sys
@@ -90,6 +91,22 @@ DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}")
+
+
+def _reject_constant(name):
+    """json.loads parse_constant hook: reject NaN/Infinity tokens."""
+    raise ValueError(f"invalid JSON constant {name}")
+
+
+def _load_json_strict(text):
+    return json.loads(text, parse_constant=_reject_constant)
+
+
+def _is_finite_number(value):
+    """True for a non-bool int or float that is finite."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    return math.isfinite(value)
 
 
 def _is_int(value):
@@ -171,22 +188,31 @@ def validate_runs(runs):
             elif record[field] is None and field not in NULLABLE_RUN_FIELDS:
                 errors.append(f"run {run_id} has null {field}")
         group = record.get("group")
-        if group is not None and group not in ALLOWED_GROUPS:
+        if group is not None and not isinstance(group, str):
+            errors.append(f"run {run_id} group is not a string")
+        elif group is not None and group not in ALLOWED_GROUPS:
             errors.append(
                 f"run {run_id} group {group!r} not in {sorted(ALLOWED_GROUPS)}"
             )
         for field in INTEGER_RUN_FIELDS:
-            if field in record and record[field] is not None and not _is_int(record[field]):
+            value = record.get(field)
+            if field in record and value is not None and not _is_int(value):
                 errors.append(f"run {run_id} field {field} is not an integer")
+            elif field in record and value is not None and value < 0:
+                errors.append(f"run {run_id} field {field} is negative")
         for field in NUMBER_RUN_FIELDS:
             value = record.get(field)
-            if field in record and value is not None and not isinstance(value, (int, float)):
-                errors.append(f"run {run_id} field {field} is not a number")
+            if field in record and value is not None and not _is_finite_number(value):
+                errors.append(f"run {run_id} field {field} is not a finite number")
+            elif field in record and value is not None and value < 0:
+                errors.append(f"run {run_id} field {field} is negative")
         for field in ("session_id", "note"):
             if field in record and record[field] is not None and not isinstance(record[field], str):
                 errors.append(f"run {run_id} field {field} is not a string or null")
         if "bytes" in record and record["bytes"] is not None and not _is_int(record["bytes"]):
             errors.append(f"run {run_id} field bytes is not an integer or null")
+        elif "bytes" in record and record["bytes"] is not None and record["bytes"] < 0:
+            errors.append(f"run {run_id} field bytes is negative")
         if (
             _is_int(record.get("input_tokens"))
             and _is_int(record.get("output_tokens"))
@@ -207,7 +233,7 @@ def validate_scores(scores, runs):
     for run_id, entry in scores.items():
         if not isinstance(entry, dict):
             errors.append(f"scores[{run_id}] is not an object")
-        if known and run_id not in known:
+        if run_id not in known:
             errors.append(f"scores key {run_id} does not match any run ID")
     return errors
 
@@ -237,8 +263,8 @@ def validate_record(data, expected_slug=None):
 def validate_path(path):
     try:
         with open(path) as f:
-            data = json.load(f)
-    except (OSError, json.JSONDecodeError) as exc:
+            data = _load_json_strict(f.read())
+    except (OSError, ValueError) as exc:
         print(f"Failed to load {path}: {exc}")
         return False
     errors = validate_record(data, expected_slug=pathlib.Path(path).parent.name)
@@ -286,7 +312,7 @@ MINIMAL_VALID_RECORD = {
 
 
 def _mutated(**changes):
-    record = json.loads(json.dumps(MINIMAL_VALID_RECORD))
+    record = _load_json_strict(json.dumps(MINIMAL_VALID_RECORD))
     for dotted, value in changes.items():
         parts = dotted.split("__")
         target = record
@@ -347,7 +373,7 @@ def self_test():
         ),
         (
             _mutated(runs__control_1__wall_clock_seconds="slow"),
-            "wall_clock_seconds is not a number",
+            "wall_clock_seconds is not a finite number",
             "non-number wall clock",
         ),
         (
@@ -373,6 +399,31 @@ def self_test():
         ),
         ([MINIMAL_VALID_RECORD], "not an object: list", "array top level"),
         ("not-an-object", "not an object: str", "scalar top level"),
+        (
+            _mutated(runs__control_1__group=[]),
+            "run control_1 group is not a string",
+            "non-hashable group value",
+        ),
+        (
+            _mutated(runs__control_1__wall_clock_seconds=True),
+            "wall_clock_seconds is not a finite number",
+            "boolean wall clock",
+        ),
+        (
+            _mutated(runs__control_1__wall_clock_seconds=-1.5),
+            "wall_clock_seconds is negative",
+            "negative wall clock",
+        ),
+        (
+            _mutated(runs__control_1__input_tokens=-10),
+            "input_tokens is negative",
+            "negative input tokens",
+        ),
+        (
+            _mutated(scores={"unknown-run": {"pass": True}}, runs={}),
+            "scores key unknown-run does not match any run ID",
+            "orphan score key with zero runs",
+        ),
         (
             _mutated(runs__control_1__session_id=42),
             "session_id is not a string or null",
@@ -402,6 +453,18 @@ def self_test():
     for record, substring, label in cases:
         if not _expect_errors(record, substring, label):
             return False
+    nan_record = _load_json_strict(json.dumps(MINIMAL_VALID_RECORD))
+    nan_record["runs"]["control_1"]["wall_clock_seconds"] = float("nan")
+    if not _expect_errors(
+        nan_record, "wall_clock_seconds is not a finite number", "NaN wall clock"
+    ):
+        return False
+    inf_record = _load_json_strict(json.dumps(MINIMAL_VALID_RECORD))
+    inf_record["runs"]["control_1"]["wall_clock_seconds"] = float("inf")
+    if not _expect_errors(
+        inf_record, "wall_clock_seconds is not a finite number", "Infinity wall clock"
+    ):
+        return False
     accepted = [
         (_mutated(issue=None), "null issue accepted"),
         (_mutated(orchestrator_session=None), "null orchestrator_session accepted"),
