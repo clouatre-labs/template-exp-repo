@@ -15,10 +15,11 @@ The table below covers all committed configuration artifacts. Issue templates, P
 | `.github/ISSUE_TEMPLATE/` | Structured issue templates | repo |
 | `.github/instructions/` | VS Code / Copilot scoped instruction files (applyTo pattern) | repo |
 | `.github/PULL_REQUEST_TEMPLATE.md` | PR template | repo |
-| `.github/workflows/ci.yml` | Commit message linting (commitlint) feeding the aggregate `CI Result` check; add language jobs to the aggregate as the repo grows | repo |
+| `.github/workflows/ci.yml` | Commit message linting (commitlint) and experiment schema validation (`validate_schema.py --self-test`) feeding the aggregate `CI Result` check; add language jobs to the aggregate as the repo grows | repo |
 | `.github/workflows/markdown-lint.yml` | Lints all Markdown on pull requests targeting `main` with markdownlint-cli2; runs with narrowed `contents: read` permissions | repo |
 | `.github/workflows/security.yml` | Sequential trufflehog and zizmor steps in a single required `Security Result` job | repo |
 | `.github/workflows/scheduled-security-audit.yml` | Weekly scheduled zizmor security audit | repo |
+| `.github/labels.yml` | Conventional Commits vocabulary labels (feat, fix, docs, chore, refactor, test, ci, perf). Labels are not managed org-wide; after adopting the template, sync them with `gh label sync --file .github/labels.yml -R <owner>/<repo>` (see `scripts/bootstrap.sh`) | repo |
 | `.commitlintrc.yml` | Conventional Commits ruleset for commitlint | repo |
 | `.github/workflows/scorecard.yml` | Weekly OpenSSF Scorecard analysis; skipped on private repos (`visibility == 'public'` gate), publishes SARIF to code scanning on public ones | repo |
 | `.github/zizmor.yml` | zizmor suppression config for intentional patterns (e.g. `github.actor` gates); owned by security-reviewers via CODEOWNERS | repo |
@@ -32,6 +33,14 @@ The table below covers all committed configuration artifacts. Issue templates, P
 | `AI_POLICY.md` | Policy on AI-assisted contributions and human accountability | repo |
 | `CONTRIBUTING.md` | Contribution guidelines | repo |
 | `SECURITY.md` | Vulnerability disclosure policy | repo |
+| `CITATION.cff` | Citation metadata template ({{REPO_NAME}}/{{TITLE}} placeholders) for the dataset | repo |
+| `.zenodo.json` | Zenodo deposit metadata template mirroring CITATION.cff | repo |
+| `METHODOLOGY.md` | Shared methodological contract: pre-registration, blind scoring, analysis plan, threats to validity | repo |
+| `DATA_DICTIONARY.md` | Field-level schema reference for `analysis.json` and `scores.json` | repo |
+| `validate_schema.py` | Stdlib-only validator for `experiments/*/analysis.json`; `--self-test` mode runs in CI | repo |
+| `experiments/` | One directory per pre-registered experiment (layout in `experiments/README.md`) | repo |
+| `recipe/` | Analysis notebooks and scripts that regenerate figures | repo |
+| `figures/` | Generated figures (kept out of history until produced) | repo |
 
 *Table 1: Committed configuration artifacts and their purpose.*
 

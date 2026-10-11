@@ -1,0 +1,39 @@
+# Conventional Commits vocabulary labels for this repository.
+# No org-wide labels.yml exists in clouatre-labs/.github, so each repo owns
+# its label set. Sync after cloning the template with:
+#   gh label sync --file .github/labels.yml -R <owner>/<repo>
+# Keep this file in sync with the vocabulary used by commitlint
+# (.commitlintrc.yml) and with .github/renovate.json label settings.
+- name: feat
+  color: 0e8a16
+  description: New feature (minor version bump)
+- name: fix
+  color: d93f0b
+  description: Bug fix (patch version bump)
+- name: docs
+  color: 0c2e6a
+  description: Documentation-only change
+- name: chore
+  color: cccccc
+  description: Maintenance task with no production code change
+- name: refactor
+  color: fbca04
+  description: Code change that neither fixes a bug nor adds a feature
+- name: test
+  color: 5319e7
+  description: Test-only change
+- name: testing
+  color: bfe5bf
+  description: Test suite, coverage, or testing infrastructure change
+- name: dependencies
+  color: 0366d6
+  description: Dependency update (Renovate or manual)
+- name: security
+  color: ee0701
+  description: Security hardening or vulnerability remediation
+- name: ci
+  color: 1d76db
+  description: CI/CD pipeline or workflow change
+- name: perf
+  color: f9d0c4
+  description: Performance improvement

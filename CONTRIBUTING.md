@@ -1,65 +1,32 @@
 # Contributing
 
-## Local setup
+Thanks for contributing to {{REPO_NAME}}. This repository hosts pre-registered experiments; the rules below exist to keep results trustworthy.
 
-- Tools: git, [gh](https://cli.github.com/), GPG (commit signing), SSH with a key registered on GitHub.
-- Authenticate: `gh auth login`; verify with `ssh -T git@github.com && gh auth status`.
+## Pre-Registration Requirement
 
-## Commit conventions
+Before running any experiment, commit `experiments/<slug>/protocol.md`, `runner-prompt.md`, and `scorer-prompt.md` describing the task, groups, sample size, rubric, and statistical test. The pre-registration commit must precede the first run. Post-hoc protocol edits require a dated addendum, never a silent rewrite.
 
-All commits must follow [Conventional Commits](https://www.conventionalcommits.org/):
+## Schema Validation
 
-```text
-<type>(<scope>): <short description>
-```
-
-Common types: `feat`, `fix`, `docs`, `refactor`, `ci`, `chore`, `test`.
-
-Every commit must be GPG-signed and include a DCO sign-off:
+Every experiment must contain a valid `analysis.json` (schema in [DATA_DICTIONARY.md](DATA_DICTIONARY.md)). Run the validator before opening a PR:
 
 ```bash
-git commit -S --signoff -m "feat(scope): description"
+uv run python validate_schema.py
 ```
 
-The DCO certifies that you have the right to contribute the change under the project licence.
-By signing off you agree to the [Developer Certificate of Origin](https://developercertificate.org/).
+CI runs the same validator in self-test mode; a PR whose `analysis.json` files fail validation will not merge.
 
-## Branch model
+## Adding an Experiment
 
-- `main` is the protected trunk; no direct commits.
-- Open a feature branch from the latest `origin/main`:
+1. Create `experiments/<slug>/` following the layout in [experiments/README.md](experiments/README.md).
+2. Commit the pre-registration artifacts.
+3. Run the experiment; store raw session artifacts under `sessions/`.
+4. Score blind against the rubric; write `scores.json` and `analysis.json`.
+5. Validate, then update the experiment index table in [README.md](README.md).
 
-```bash
-git fetch -p
-git checkout -b feat/short-description origin/main
-```
+## General Guidelines
 
-- One logical change per branch. Keep PRs focused and atomic.
-
-## Pull request flow
-
-1. Push your branch and open a PR against `main`.
-2. Fill in the PR template fully.
-3. Ensure all CI checks pass before requesting review.
-4. Address review comments by amending commits or adding fix commits; do not force-push after review has started.
-5. A maintainer will squash-merge after approval.
-
-## Merge Strategy and Cleanup
-
-This repository enforces a **squash-merge only** policy:
-
-- Merge commits are disabled; only squash merges are allowed
-- Rebase merges are also disabled
-- After merge, the source branch is deleted automatically
-
-Squash merges produce a linear, readable commit history; each PR becomes one logically-complete commit on `main`. This keeps the history clean and makes it easier to revert changes or bisect for regressions if needed.
-
-Automatic branch deletion removes the source branch immediately after merge, eliminating stale branches and keeping the branch list manageable. If you need to retain a feature branch for reference, create a tag pointing to the branch's tip commit before merging.
-
-## PR checklist
-
-- [ ] Linked issue in the PR description
-- [ ] Conventional commit messages with GPG sign and DCO sign-off
-- [ ] CI: security scan, markdown lint passing
-- [ ] No secrets or credentials introduced
-- [ ] Documentation updated where needed
+- Conventional Commits are enforced by commitlint in CI.
+- Large binary artifacts do not belong in git; summarize or reference them.
+- Security-relevant files under `.github/` require review from `@clouatre-labs/security-reviewers` (see `CODEOWNERS`).
+- See [AI_POLICY.md](AI_POLICY.md) for the AI-assisted contribution policy.
