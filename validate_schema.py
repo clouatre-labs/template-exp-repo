@@ -23,7 +23,9 @@ import json
 import math
 import pathlib
 import re
+import shutil
 import sys
+import tempfile
 
 # Top-level fields that are allowed to be null.
 NULLABLE_TOP_FIELDS = {"issue", "orchestrator_session"}
@@ -482,10 +484,56 @@ def self_test():
     if not any("does not match directory slug" in error for error in slug_errors):
         print(f"self-test FAILED: slug mismatch not caught: {slug_errors}")
         return False
+    # Discovery mode: missing analysis.json must fail, empty experiments/ passes.
+    with tempfile.TemporaryDirectory() as tmp:
+        base = pathlib.Path(tmp)
+        missing = base / "experiments" / "exp-missing"
+        missing.mkdir(parents=True)
+        present = base / "experiments" / "exp-present"
+        present.mkdir()
+        record = _load_json_strict(json.dumps(MINIMAL_VALID_RECORD))
+        record["experiment"] = "exp-present"
+        (present / "analysis.json").write_text(json.dumps(record))
+        if validate_discovery(base):
+            print("self-test FAILED: discovery accepted missing analysis.json")
+            return False
+        empty_base = pathlib.Path(tempfile.mkdtemp())
+        try:
+            (empty_base / "experiments").mkdir()
+            if not validate_discovery(empty_base):
+                print("self-test FAILED: discovery rejected empty experiments dir")
+                return False
+        finally:
+            shutil.rmtree(empty_base)
     print(
-        "self-test passed: valid record accepted and each rule rejects its invalid case"
+        "self-test passed: valid record accepted, each rule rejects its invalid case, discovery flags missing analysis.json"
     )
     return True
+
+
+def validate_discovery(base):
+    experiments_dir = pathlib.Path(base) / "experiments"
+    if not experiments_dir.is_dir():
+        print("No experiments/ directory found; nothing to validate.")
+        return True
+    exp_dirs = sorted(
+        d
+        for d in experiments_dir.iterdir()
+        if d.is_dir() and not d.name.startswith(".")
+    )
+    if not exp_dirs:
+        print("No experiments/* directories found; nothing to validate.")
+        return True
+    all_ok = True
+    for exp_dir in exp_dirs:
+        analysis = exp_dir / "analysis.json"
+        if not analysis.is_file():
+            print(f"Validation error: missing {analysis}")
+            all_ok = False
+            continue
+        if not validate_path(analysis):
+            all_ok = False
+    return all_ok
 
 
 def main():
@@ -495,13 +543,7 @@ def main():
     if file_args:
         all_ok = all(validate_path(pathlib.Path(arg)) for arg in file_args)
         sys.exit(0 if all_ok else 1)
-    base = pathlib.Path(".").resolve()
-    paths = sorted((base / "experiments").glob("*/analysis.json"))
-    if not paths:
-        print("No experiments/*/analysis.json files found; nothing to validate.")
-        sys.exit(0)
-    all_ok = all(validate_path(p) for p in paths)
-    sys.exit(0 if all_ok else 1)
+    sys.exit(0 if validate_discovery(pathlib.Path(".").resolve()) else 1)
 
 
 if __name__ == "__main__":
