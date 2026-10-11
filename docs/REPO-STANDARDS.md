@@ -19,7 +19,7 @@ The table below covers all committed configuration artifacts. Issue templates, P
 | `.github/workflows/markdown-lint.yml` | Lints all Markdown on pull requests targeting `main` with markdownlint-cli2; runs with narrowed `contents: read` permissions | repo |
 | `.github/workflows/security.yml` | Sequential trufflehog and zizmor steps in a single required `Security Result` job | repo |
 | `.github/workflows/scheduled-security-audit.yml` | Weekly scheduled zizmor security audit | repo |
-| `.github/labels.yml` | Conventional Commits vocabulary labels (feat, fix, docs, chore, refactor, test, ci, perf). Labels are not managed org-wide; after adopting the template, sync them with `gh label sync --file .github/labels.yml -R <owner>/<repo>` (see `scripts/bootstrap.sh`) | repo |
+| `scripts/bootstrap.sh` | Creates the Conventional Commits vocabulary labels (commitlint types plus issue-template labels); supports `--apply` to create the repo branch ruleset directly. Labels are also managed org-wide by `clouatre-labs/.github` (`apply-org-settings.sh`, add/update-only); outside the org, bootstrap.sh is the label source of truth | repo |
 | `.commitlintrc.yml` | Conventional Commits ruleset for commitlint | repo |
 | `.github/workflows/scorecard.yml` | Weekly OpenSSF Scorecard analysis; skipped on private repos (`visibility == 'public'` gate), publishes SARIF to code scanning on public ones | repo |
 | `.github/zizmor.yml` | zizmor suppression config for intentional patterns (e.g. `github.actor` gates); owned by security-reviewers via CODEOWNERS | repo |
@@ -41,6 +41,7 @@ The table below covers all committed configuration artifacts. Issue templates, P
 | `experiments/` | One directory per pre-registered experiment (layout in `experiments/README.md`) | repo |
 | `recipe/` | Analysis notebooks and scripts that regenerate figures | repo |
 | `figures/` | Generated figures (kept out of history until produced) | repo |
+| `results/` | Derived tables and summary statistics (kept out of history until produced); raw artifacts stay in `experiments/*/sessions/` | repo |
 
 *Table 1: Committed configuration artifacts and their purpose.*
 
@@ -140,7 +141,7 @@ jobs:
 
 **`subject-case`, `body-max-line-length`, and `footer-leading-blank` disabled in `.commitlintrc.yml`.** `@commitlint/config-conventional` enforces lowercase commit subjects, a 100-character body line limit, and a blank line before the footer, but none of these rules are part of the Conventional Commits spec; all are opinions layered on top by the preset. Every automated tool in the ecosystem (Dependabot, Renovate, release-please, GitHub Copilot) generates sentence-case subjects (e.g. "Bump the actions group with 2 updates") and embeds full changelogs in commit bodies that routinely exceed 100 characters. `footer-leading-blank` is cosmetic and not in the spec. These three rules are disabled at severity 0 so bot-generated commits pass CI without whitelisting individual actors. All structural rules remain enforced: `type-enum`, `type-case`, `scope-case`, `header-max-length`, `body-leading-blank`, and `subject-full-stop`.
 
-**Two-layer branch protection.** Branch protection now exists at two levels: the org ruleset `Main Branch Protection` (currently `evaluate`, flipping to `active` after the insights review window, clouatre-labs/.github#52) and the repo ruleset `Protect main branch`. The org ruleset's only required check is `DCO` (Signed-off-by), which becomes blocking org-wide once active; bot commits are DCO-exempt via the bypass actor. Once the org ruleset is active, the repo ruleset's overlapping pull-request/deletion/non-fast-forward rules become redundant and can be retired; keep only repo-specific required status checks (`CI Result`, `Security Result`, `Lint markdown`).
+**Two-layer branch protection.** Branch protection now exists at two levels: the org ruleset `Main Branch Protection` (verified `active` as of 2026-10, clouatre-labs/.github) and the repo ruleset `Protect main branch`. The org ruleset's required check comes from the org variable `REQUIRED_CHECK_NAME` (default `DCO`, Signed-off-by) and applies org-wide; the DCO GitHub App is installed org-wide and provides the `DCO` status check on every PR, so the org requirement is satisfiable. Bot commits are DCO-exempt via the bypass actor. Once the org ruleset is active, the repo ruleset's overlapping pull-request/deletion/non-fast-forward rules become redundant and can be retired; keep only repo-specific required status checks (`CI Result`, `Security Result`, `Lint markdown`).
 
 **Aggregate `CI Result` check.** The branch ruleset requires the stable check name `CI Result`, not individual job names. `ci.yml` currently contributes one job (`lint-commits`) to the aggregate; as the repo gains language CI (lint, test, build), add the job names to the `needs` array instead of editing the ruleset, mirroring the org workflow template of the same name.
 
@@ -531,7 +532,7 @@ The following controls cannot be applied at the repo level. They require org adm
 | Org-wide fork PR approval policy | Prevents untrusted code from external forks running on org-hosted runners and accessing org secrets | Org admin: GitHub org settings > Actions > Fork pull request workflows |
 | Tag immutability org ruleset | Blocks tag force-push attacks (the Trivy breach pattern: attacker moved a release tag to point to malicious code); immutable tags make SHA pinning meaningful | Org admin: GitHub org-level ruleset with tag target and `non_fast_forward` + `deletion` rules |
 | trufflehog GitHub App | App-level secret detection runs regardless of workflow state; the CI-only trufflehog check can be bypassed by deleting or disabling the security workflow | Org admin or owner: GitHub App installation on org |
-| DCO GitHub App | App-level DCO enforcement with per-commit UI feedback; the current `commit_message_pattern` rule enforces DCO at push but the App provides richer status and contributor guidance | Org admin or owner: GitHub App installation on org |
+| DCO GitHub App | App-level DCO enforcement with per-commit UI feedback; installed org-wide and providing the required `DCO` status check on all PRs. The repo ruleset's `commit_message_pattern` rule enforces DCO at push as a second layer for repos outside the org | In place (org-wide GitHub App installation) |
 | 2FA enforcement | Account takeover baseline; without 2FA a credential-stuffing attack can push directly to any repo the compromised account can access | Org admin: GitHub org settings > Security > Authentication. Status unverified; requires org owner to confirm at Settings > Security > Authentication |
 
 *Table 2: Controls requiring org admin access, with rationale and enforcement path.*

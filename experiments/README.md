@@ -2,6 +2,11 @@
 
 One directory per pre-registered experiment: `experiments/<slug>/`.
 
+`experiments/example-fixture/` is a complete minimal scaffold and the CI
+schema-validation fixture; copy it when starting a real experiment. CI
+validates every `experiments/*/analysis.json`, so an experiment directory
+without `analysis.json` fails the build.
+
 ## Required Layout
 
 ```text
@@ -20,4 +25,5 @@ experiments/<slug>/
 2. Run the experiment; store raw artifacts under `sessions/`.
 3. Score blind against the rubric; write `scores.json`.
 4. Summarize into `analysis.json` and validate: `uv run python validate_schema.py`. Validation iterates every `experiments/*/` directory; one missing `analysis.json` is a validation error (exit 1).
-5. Update the experiment index table in the repository README.
+5. Write derived tables and figures to `results/` and `figures/` respectively; keep raw artifacts in `sessions/`.
+6. Update the experiment index table in the repository README.
